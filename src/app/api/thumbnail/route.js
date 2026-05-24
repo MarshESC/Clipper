@@ -52,7 +52,7 @@ export async function GET(req) {
 
     console.log(`Extracting frame at ${time}s using FFmpeg from stream...`);
     // -ss before -i ensures extremely fast seeking, -vframes 1 grabs one frame, -q:v 2 is high quality JPEG
-    const ffmpegCmd = `/opt/homebrew/bin/ffmpeg -ss ${time} -i "${inputUrl}" -vframes 1 -q:v 2 -y "${thumbPath}"`;
+    const ffmpegCmd = `ffmpeg -ss ${time} -i "${inputUrl}" -vframes 1 -q:v 2 -y "${thumbPath}"`;
     await runCommand(ffmpegCmd);
 
     if (!fs.existsSync(thumbPath)) {

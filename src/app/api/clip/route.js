@@ -32,7 +32,7 @@ export async function POST(req) {
   try {
     const body = await req.json();
     videoPath = body.videoPath;
-    const { start, end, cropXPercent, burnSubtitles, subtitles } = body;
+    const { start, end, cropXPercent, burnSubtitles, subtitles, orientation } = body;
 
     if (!videoPath) {
       return NextResponse.json({ error: 'Missing videoPath parameter.' }, { status: 400 });
@@ -98,26 +98,37 @@ export async function POST(req) {
     // Handles shifting crop horizontaly based on cropXPercent (-100 to +100)
     // Formula calculates left-corner coordinates: (1 + cropXPercent/100) * (iw - ih*9/16) / 2
     // We normalize to avoid division issues by executing mathematically
-    const shiftMultiplier = (1 + (parseFloat(cropXPercent) || 0) / 100).toFixed(4);
-    let videoFilter = `crop=ih*9/16:ih:${shiftMultiplier}*(iw-ih*9/16)/2:0`;
+    let videoFilter = '';
+
+    if (orientation !== 'landscape') {
+      const shiftMultiplier = (1 + (parseFloat(cropXPercent) || 0) / 100).toFixed(4);
+      videoFilter += `crop=ih*9/16:ih:${shiftMultiplier}*(iw-ih*9/16)/2:0`;
+    }
 
     if (burnSubtitles && tempSrtPath) {
       // Escape path characters for FFmpeg filter on macOS
       const escapedSrtPath = tempSrtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-      // Subtitles filter options: force Outfit/sans bold font, yellow active color
-      videoFilter += `,subtitles='${escapedSrtPath}':force_style='Fontname=Outfit,Fontsize=22,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2'`;
+      // Subtitles filter options
+      const subtitleFilter = `subtitles='${escapedSrtPath}':force_style='Fontname=Arial,Fontsize=22,PrimaryColour=&H0000FFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2'`;
+      if (videoFilter.length > 0) {
+        videoFilter += `,${subtitleFilter}`;
+      } else {
+        videoFilter = subtitleFilter;
+      }
     }
 
     finalOutputPath = path.join(tempDir, `clip-final-${clipId}.mp4`);
     
     // Assemble final FFmpeg command
     let ffmpegCmd = '';
+    const vfArg = videoFilter.length > 0 ? `-vf "${videoFilter}"` : '';
+
     if (isYoutube) {
       // Input is already trimmed, just apply crop/subtitles and stream copy audio
-      ffmpegCmd = `/opt/homebrew/bin/ffmpeg -i "${tempTrimmedPath}" -vf "${videoFilter}" -c:a aac -y "${finalOutputPath}"`;
+      ffmpegCmd = `ffmpeg -i "${tempTrimmedPath}" ${vfArg} -c:a aac -y "${finalOutputPath}"`;
     } else {
       // Input is raw local file: apply both time trim (-ss, -to) and crop filter in one go
-      ffmpegCmd = `/opt/homebrew/bin/ffmpeg -ss ${start} -to ${end} -i "${tempTrimmedPath}" -vf "${videoFilter}" -c:a aac -y "${finalOutputPath}"`;
+      ffmpegCmd = `ffmpeg -ss ${start} -to ${end} -i "${tempTrimmedPath}" ${vfArg} -c:a aac -y "${finalOutputPath}"`;
     }
 
     console.log('Executing FFmpeg process:', ffmpegCmd);

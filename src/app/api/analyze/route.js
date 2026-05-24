@@ -47,7 +47,7 @@ export async function POST(req) {
   });
 
   try {
-    const { videoUrl, filePath, query } = await req.json();
+    const { videoUrl, filePath, query, maxDuration } = await req.json();
 
     const tempDir = path.join(process.cwd(), 'public', 'temp');
     if (!fs.existsSync(tempDir)) {
@@ -103,7 +103,7 @@ export async function POST(req) {
 
       console.log('Extracting audio from local video using FFmpeg...');
       // -vn = disable video, -y = overwrite, -q:a 5 = medium quality VBR MP3 (perfect for speech/timing)
-      const extractCmd = `/opt/homebrew/bin/ffmpeg -i "${filePath}" -vn -acodec libmp3lame -q:a 5 -y "${tempAudioPath}"`;
+      const extractCmd = `ffmpeg -i "${filePath}" -vn -acodec libmp3lame -q:a 5 -y "${tempAudioPath}"`;
       await runCommand(extractCmd);
 
       if (!fs.existsSync(tempAudioPath)) {
@@ -123,13 +123,14 @@ export async function POST(req) {
     console.log('File successfully uploaded to Gemini. URI:', uploadResult.uri);
 
     // 3. Formulate the prompt
+    const durationLimit = maxDuration || 50;
     let searchCriteria = 'Extract the top 3 to 5 most engaging, high-energy, funny, or key highlights that would make viral short vertical clips (TikTok/Reels/Shorts).';
     if (query) {
       searchCriteria = `Instead of default viral hooks, locate and extract highlights matching this specific request: "${query}". Find up to 4 segments.`;
     }
 
     const systemPrompt = `You are a professional social media video editor and hook generator.
-Your goal is to parse the audio stream and identify key sections (between 15 and 50 seconds long) that are extremely engaging.
+Your goal is to parse the audio stream and identify key sections (between 15 and ${durationLimit} seconds long) that are extremely engaging.
 For each segment, you must provide:
 1. "title": A super clickbaity, catchy viral title with emojis.
 2. "hook_description": Explanation of why this makes a great hook.

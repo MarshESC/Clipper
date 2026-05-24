@@ -30,10 +30,12 @@ export default function VideoPlayer({
   useEffect(() => {
     if (isYoutube && activeClip && isPlaying) {
       // For YouTube, simulate time ticks inside the clip boundaries
-      setCurrentTime(parseFloat(activeClip.start_time));
-      
       const interval = setInterval(() => {
         setCurrentTime((prev) => {
+          // Initialize if it's the very start or out of bounds
+          if (prev < activeClip.start_time || prev >= activeClip.end_time) {
+            return parseFloat(activeClip.start_time);
+          }
           const next = prev + 0.1;
           if (next >= parseFloat(activeClip.end_time)) {
             return parseFloat(activeClip.start_time);
