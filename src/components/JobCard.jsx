@@ -382,7 +382,7 @@ export default function JobCard({ job, expanded, onToggleExpand, onDownloadClip,
             <div className="progress-fill" style={{ width: `${job.progress || 0}%` }} />
           </div>
           {job.progressMessage && (
-            <div className="progress-message">{job.progressMessage}</div>
+            <div className="progress-message">{job.progress || 0}% - {job.progressMessage}</div>
           )}
         </div>
       )}

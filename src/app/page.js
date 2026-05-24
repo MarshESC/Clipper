@@ -11,14 +11,18 @@ export default function Home() {
   
   // Use ref to access latest jobs in async closures
   const jobsRef = useRef(jobs);
-  jobsRef.current = jobs;
+
+  // Use effect to keep jobsRef up to date safely
+  React.useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
 
   const updateJob = useCallback((jobId, updates) => {
     setJobs(prev => prev.map(j => j.id === jobId ? { ...j, ...updates } : j));
   }, []);
 
   // Process a video job: fetch metadata then analyze
-  const processUrlJob = useCallback(async (jobId, url) => {
+  const processUrlJob = useCallback(async (jobId, url, maxDuration, orientation) => {
     // Step 1: Fetch metadata
     try {
       updateJob(jobId, { status: 'fetching_meta', progress: 10, progressMessage: 'Fetching video info...' });
@@ -73,7 +77,7 @@ export default function Home() {
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoUrl: url })
+        body: JSON.stringify({ videoUrl: url, maxDuration })
       });
 
       clearTimeout(progressTimer);
@@ -106,7 +110,7 @@ export default function Home() {
   }, [updateJob]);
 
   // Handle YouTube URL submission
-  const handleAddUrl = useCallback((url) => {
+  const handleAddUrl = useCallback((url, { maxDuration, orientation }) => {
     const jobId = `job-${Date.now()}`;
     const newJob = {
       id: jobId,
@@ -121,16 +125,17 @@ export default function Home() {
       clips: [],
       error: null,
       videoPath: url, // for clip export
+      orientation,
     };
 
     setJobs(prev => [newJob, ...prev]);
 
     // Start processing (non-blocking)
-    processUrlJob(jobId, url);
+    processUrlJob(jobId, url, maxDuration, orientation);
   }, [processUrlJob]);
 
   // Handle file upload submission
-  const handleAddFile = useCallback(async (file) => {
+  const handleAddFile = useCallback(async (file, { maxDuration, orientation }) => {
     const jobId = `job-${Date.now()}`;
     const newJob = {
       id: jobId,
@@ -145,6 +150,7 @@ export default function Home() {
       clips: [],
       error: null,
       videoPath: null,
+      orientation,
     };
 
     setJobs(prev => [newJob, ...prev]);
@@ -189,7 +195,7 @@ export default function Home() {
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath: uploadData.filePath })
+        body: JSON.stringify({ filePath: uploadData.filePath, maxDuration })
       });
 
       clearTimeout(progressTimer);
@@ -235,7 +241,8 @@ export default function Home() {
           end: clip.end_time,
           cropXPercent: 0,
           burnSubtitles: true,
-          subtitles: clip.subtitles
+          subtitles: clip.subtitles,
+          orientation: job.orientation,
         })
       });
 

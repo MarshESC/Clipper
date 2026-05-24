@@ -6,6 +6,8 @@ export default function VideoInput({ onSubmitUrl, onSubmitFile, disabled }) {
   const [ytUrl, setYtUrl] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
+  const [maxDuration, setMaxDuration] = useState('30');
+  const [orientation, setOrientation] = useState('portrait');
   const fileInputRef = useRef(null);
 
   const handleYtSubmit = (e) => {
@@ -19,7 +21,7 @@ export default function VideoInput({ onSubmitUrl, onSubmitFile, disabled }) {
       return;
     }
 
-    onSubmitUrl(ytUrl.trim());
+    onSubmitUrl(ytUrl.trim(), { maxDuration: parseInt(maxDuration, 10), orientation });
     setYtUrl(''); // Clear input immediately for next URL
   };
 
@@ -55,7 +57,7 @@ export default function VideoInput({ onSubmitUrl, onSubmitFile, disabled }) {
       return;
     }
     setError('');
-    onSubmitFile(file);
+    onSubmitFile(file, { maxDuration: parseInt(maxDuration, 10), orientation });
   };
 
   return (
@@ -63,8 +65,38 @@ export default function VideoInput({ onSubmitUrl, onSubmitFile, disabled }) {
       <div>
         <h2 style={{ fontSize: '1.3rem', marginBottom: '4px' }}>⚡ AI Clipper Studio</h2>
         <p style={{ fontSize: '0.85rem' }}>
-          Paste YouTube links or drop video files. You can add multiple — they'll be processed in the background.
+          Paste YouTube links or drop video files. You can add multiple — they&apos;ll be processed in the background.
         </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+          <label className="input-label">Max Duration</label>
+          <select
+            className="input-field"
+            value={maxDuration}
+            onChange={(e) => setMaxDuration(e.target.value)}
+            disabled={disabled}
+            style={{ appearance: 'auto', background: 'rgba(0, 0, 0, 0.4)' }}
+          >
+            <option value="15">15 seconds</option>
+            <option value="30">30 seconds</option>
+            <option value="60">60 seconds</option>
+          </select>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+          <label className="input-label">Orientation</label>
+          <select
+            className="input-field"
+            value={orientation}
+            onChange={(e) => setOrientation(e.target.value)}
+            disabled={disabled}
+            style={{ appearance: 'auto', background: 'rgba(0, 0, 0, 0.4)' }}
+          >
+            <option value="portrait">Portrait (9:16)</option>
+            <option value="landscape">Landscape (16:9)</option>
+          </select>
+        </div>
       </div>
 
       {error && (
